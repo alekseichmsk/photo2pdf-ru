@@ -58,3 +58,7 @@ def test_rate_limit_and_captcha(url):
     assert post(url,"/text",{"text":"Hi.","token":app.make_token(),"cid":cid,"captcha":str(ans+1)},ip=ip)[0]==429
     c,_,b=post(url,"/text",{"text":"Hi.","token":app.make_token()},ip=ip);cid=b.decode().split("name=cid value=")[1].split(">")[0]
     assert post(url,"/text",{"text":"Hi.","token":app.make_token(),"cid":cid,"captcha":str(app._caps[cid])},ip=ip)[0]==200
+
+def test_health_and_no_chrome():
+    import app, inspect
+    assert "chrom" not in inspect.getsource(app.render).lower()

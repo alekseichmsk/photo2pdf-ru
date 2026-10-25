@@ -4,11 +4,11 @@
 Над каждым словом стоит транскрипция русскими буквами (британское произношение), под строкой перевод.
 
 Как это работает: Tesseract распознаёт текст с фото, словарь ipa-dict en_UK (данные Викисловаря) даёт транскрипцию,
-для незнакомых слов используется eSpeak-NG, Argos Translate переводит на русский, Chrome сохраняет PDF.
+для незнакомых слов используется eSpeak-NG, Argos Translate переводит на русский, WeasyPrint сохраняет PDF.
 
 ## Установка
 
-    sudo apt install tesseract-ocr espeak-ng google-chrome-stable
+    sudo apt install tesseract-ocr espeak-ng libpango-1.0-0 libpangoft2-1.0-0 && pip install weasyprint
     python3 -m venv venv
     venv/bin/pip install -r requirements.txt
     ./get_dict.sh        # словарь и модель перевода, нужен интернет один раз

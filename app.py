@@ -57,12 +57,12 @@ def page(err="",cap=None):
 <p class=or>или</p><h2>Загрузите фото страницы</h2><form method=post enctype=multipart/form-data action=/convert><input type=file name=photo accept="image/*" required><div class=n>JPG, PNG, WEBP, до 10 МБ</div>{hid}<button>Сделать PDF</button></form></div></body></html>'''
 
 def render(lines,out):
-    h='<html><meta charset=utf-8><style>body{font-family:"DejaVu Sans",sans-serif;font-size:13px}.w{display:inline-block;text-align:center;margin:0 3px 4px 0}.t{font-size:10px;color:#555}.r{color:#225;margin:2px 0 12px}</style><body>'
+    h='<html><meta charset=utf-8><style>body{font-family:"DejaVu Sans",sans-serif;font-size:13px}@page{size:A4;margin:1.5cm}.w{display:inline-block;text-align:center;margin:0 5px 4px 0}.t{font-size:10px;color:#555}.r{color:#225;margin:2px 0 12px}</style><body>'
     for L in lines:
         s=html.escape(L.get("speaker") or "")
         h+='<div>'+(f'<b>{s}:</b> ' if s else '')+''.join(f'<span class=w><span class=t>{html.escape(w["ru"])}</span><br>{html.escape(w["en"])}</span>' for w in L["words"])+f'</div><div class=r>{html.escape(L["translation"])}</div>'
-    d=tempfile.mkdtemp();f=d+"/in.html";open(f,"w").write(h+"</body></html>")
-    subprocess.run([os.environ.get("CHROME","google-chrome"),"--headless","--no-sandbox","--disable-gpu","--disable-dev-shm-usage","--disable-extensions","--no-zygote","--renderer-process-limit=1","--disable-software-rasterizer","--disable-background-networking","--disable-sync","--no-first-run","--mute-audio","--js-flags=--max-old-space-size=64","--no-pdf-header-footer","--print-to-pdf="+out,f],capture_output=True,timeout=120)
+    from weasyprint import HTML
+    HTML(string=h+"</body></html>").write_pdf(out)
 _tr=None
 def _model():
     # Lightweight path: ctranslate2 + sentencepiece directly (avoids importing torch/stanza; ~150MB vs ~1GB RAM)
@@ -93,7 +93,9 @@ class H(BaseHTTPRequestHandler):
     def log_message(self,*a): pass
     def send(self,code,body,ct="text/html; charset=utf-8"):
         self.send_response(code);self.send_header("Content-Type",ct);self.send_header("Content-Length",str(len(body)));self.end_headers();self.wfile.write(body)
-    def do_GET(self): self.send(200,page().encode())
+    def do_GET(self):
+        if self.path=="/health": return self.send(200,b"ok weasyprint-v2","text/plain")
+        self.send(200,page().encode())
     def fail(self,code,msg,cap=False): self.send(code,page(msg,new_captcha() if cap else None).encode())
     def do_POST(self):
         n=int(self.headers.get("Content-Length") or 0)
