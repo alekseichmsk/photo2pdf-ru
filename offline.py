@@ -1,7 +1,21 @@
 import re,subprocess,csv,io,statistics
 from ipa import trans
+import os,tempfile
+MAX_SIDE=int(os.environ.get("OCR_MAX_SIDE",2000))
+def prep(img):
+    # downscale big phone photos (3-4k px) -> much faster tesseract; small images go as-is
+    # (grayscale conversion was tested and hurt speaker-label detection on tests/sample.jpg)
+    from PIL import Image,ImageOps
+    im=Image.open(img)
+    if max(im.size)<=MAX_SIDE and im.getexif().get(274,1)==1: return None
+    im=ImageOps.exif_transpose(im).convert("RGB")
+    if max(im.size)>MAX_SIDE: im.thumbnail((MAX_SIDE,MAX_SIDE),Image.LANCZOS)
+    p=tempfile.mktemp(suffix=".png");im.save(p);return p
 def ocr_lines(img):
-    t=subprocess.run(['tesseract',img,'-','tsv'],capture_output=True,text=True).stdout
+    p=prep(img)
+    try: t=subprocess.run(['tesseract',p or img,'-','tsv'],capture_output=True,text=True,env=dict(os.environ,OMP_THREAD_LIMIT="1")).stdout
+    finally:
+        if p: os.remove(p)
     g={}
     for r in csv.DictReader(io.StringIO(t),delimiter='\t',quoting=csv.QUOTE_NONE):
         if r['level']!='5' or not r['text'].strip(): continue

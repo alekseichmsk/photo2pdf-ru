@@ -62,3 +62,16 @@ def test_rate_limit_and_captcha(url):
 def test_health_and_no_chrome():
     import app, inspect
     assert "chrom" not in inspect.getsource(app.render).lower()
+
+def test_loading_state_and_health_v3():
+    import app, inspect
+    p=app.page()
+    assert "Обрабатываю... это может занять до 2 минут" in p and "<script>" in p and "http" not in p.split("<script>")[1]
+    assert "weasyprint-v3" in inspect.getsource(app.H.do_GET)
+
+def test_ocr_prep_downscale(tmp_path):
+    from PIL import Image
+    import offline
+    big=tmp_path/"b.png"; Image.new("RGB",(4000,3000),"white").save(big)
+    p=offline.prep(str(big)); assert p and max(Image.open(p).size)<=offline.MAX_SIDE
+    small=tmp_path/"s.png"; Image.new("RGB",(800,600),"white").save(small); assert offline.prep(str(small)) is None

@@ -3,7 +3,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr t
 RUN useradd -m -u 1000 user
 USER user
 # Render sets PORT (default 10000); app binds 0.0.0.0:$PORT
-ENV HOME=/home/user PATH=/home/user/.local/bin:$PATH PORT=10000 PYTHONUNBUFFERED=1 OMP_NUM_THREADS=1
+ENV HOME=/home/user PATH=/home/user/.local/bin:$PATH PORT=10000 PYTHONUNBUFFERED=1 OMP_NUM_THREADS=1 OMP_THREAD_LIMIT=1
 WORKDIR /home/user/app
 # argostranslate only to download the en->ru model at build time; runtime uses ctranslate2+sentencepiece directly (low RAM)
 RUN pip install --no-cache-dir --user argostranslate==1.11.0 weasyprint==70.0
