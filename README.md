@@ -23,3 +23,9 @@
 
 Защита от спама: скрытое поле-ловушка, подписанная метка времени формы (не быстрее 3 секунд),
 не более 10 запросов за 10 минут с одного IP (дальше нужен пример на сложение), фото до 10 МБ, текст до 5000 символов.
+
+## Деплой на Render (бесплатно)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/alekseichmsk/photo2pdf-ru)
+
+Docker-образ слушает `0.0.0.0:$PORT` (Render задаёт PORT, по умолчанию 10000). `render.yaml` создаёт бесплатный web-сервис и генерирует `APP_SECRET`.

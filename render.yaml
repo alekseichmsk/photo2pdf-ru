@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: photo2pdf-ru
+    runtime: docker
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: APP_SECRET
+        generateValue: true

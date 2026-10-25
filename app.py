@@ -62,9 +62,23 @@ def render(lines,out):
         s=html.escape(L.get("speaker") or "")
         h+='<div>'+(f'<b>{s}:</b> ' if s else '')+''.join(f'<span class=w><span class=t>{html.escape(w["ru"])}</span><br>{html.escape(w["en"])}</span>' for w in L["words"])+f'</div><div class=r>{html.escape(L["translation"])}</div>'
     d=tempfile.mkdtemp();f=d+"/in.html";open(f,"w").write(h+"</body></html>")
-    subprocess.run(["google-chrome","--headless","--no-sandbox","--disable-gpu","--no-pdf-header-footer","--print-to-pdf="+out,f],capture_output=True,timeout=120)
+    subprocess.run([os.environ.get("CHROME","google-chrome"),"--headless","--no-sandbox","--disable-gpu","--disable-dev-shm-usage","--disable-extensions","--no-zygote","--renderer-process-limit=1","--disable-software-rasterizer","--disable-background-networking","--disable-sync","--no-first-run","--mute-audio","--js-flags=--max-old-space-size=64","--no-pdf-header-footer","--print-to-pdf="+out,f],capture_output=True,timeout=120)
+_tr=None
+def _model():
+    # Lightweight path: ctranslate2 + sentencepiece directly (avoids importing torch/stanza; ~150MB vs ~1GB RAM)
+    global _tr
+    if _tr is None:
+        import ctranslate2,sentencepiece,glob,json
+        base=os.environ.get("ARGOS_PACKAGES_DIR") or os.path.expanduser("~/.local/share/argos-translate/packages")
+        d=next(p for p in glob.glob(base+"/*") if os.path.isfile(p+"/metadata.json") and (lambda m:m.get("from_code")=="en" and m.get("to_code")=="ru")(json.load(open(p+"/metadata.json"))))
+        _tr=(ctranslate2.Translator(d+"/model",device="cpu",inter_threads=1,intra_threads=1,compute_type="int8"),sentencepiece.SentencePieceProcessor(model_file=d+"/sentencepiece.model"))
+    return _tr
 def tr(s):
-    import argostranslate.translate as t; return t.translate(s,'en','ru')
+    m,sp=_model(); out=[]
+    for x in [p for p in re.split(r'(?<=[.!?])\s+',s.strip()) if p]:
+        r=m.translate_batch([sp.encode(x,out_type=str)],beam_size=2,max_decoding_length=256)
+        out.append(sp.decode(r[0].hypotheses[0]).replace("▁"," ").strip())
+    return " ".join(out)
 def convert(img,out):
     import offline
     rows=offline.parse(img)
@@ -99,6 +113,7 @@ class H(BaseHTTPRequestHandler):
             cid=g("cid"); ans=_caps.pop(cid,None)
             if ans is None or g("captcha")!=str(ans): return self.fail(429,"Слишком много запросов. Решите пример и отправьте снова",cap=True)
         d=tempfile.mkdtemp();out=d+"/out.pdf"
+        _job.acquire()
         try:
             if self.path=="/text":
                 t=g("text")
@@ -114,4 +129,10 @@ class H(BaseHTTPRequestHandler):
             body=open(out,"rb").read()
             self.send_response(200);self.send_header("Content-Type","application/pdf");self.send_header("Content-Disposition","attachment; filename=text.pdf");self.send_header("Content-Length",str(len(body)));self.end_headers();self.wfile.write(body)
         except Exception as e: self.fail(500,"Ошибка: "+str(e))
-if __name__=="__main__": ThreadingHTTPServer(("0.0.0.0",int(os.environ.get("PORT",8080))),H).serve_forever()
+        finally: _job.release(); __import__("shutil").rmtree(d,ignore_errors=True)
+_job=__import__("threading").Lock()  # one PDF job at a time (512MB RAM on free hosting)
+if __name__=="__main__":
+    if os.environ.get("PRELOAD","1")=="1":
+        try: _model()
+        except Exception as e: print("model preload failed:",e)
+    ThreadingHTTPServer(("0.0.0.0",int(os.environ.get("PORT",8080))),H).serve_forever()
