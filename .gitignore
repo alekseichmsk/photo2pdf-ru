@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+.pytest_cache/
+data/
+models/
+*.pdf
+*.log
+*.png
+!page2.png
+test.jpg
+obento.txt
